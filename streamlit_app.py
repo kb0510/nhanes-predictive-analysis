@@ -194,17 +194,63 @@ def rqs():
                     f"&nbsp;&nbsp;{q.replace('**', '')}</div>", unsafe_allow_html=True)
 
 
+# histogram settings per column: readable name, bin width, one-line reading
+HIST = {
+    'phq9_score': ('PHQ-9 score (0–27)', 1, 'About a third of adults score 0; only the tail from 10 up (orange) counts as depressed.'),
+    'age': ('Age (years)', 5, 'Spread evenly from 18 to 80; the tall last bar is everyone aged 80 or over.'),
+    'income_ratio': ('Income ratio (× poverty line)', 0.25, 'About half are between 0.5 and 3× the poverty line; the tall bar at 5 is everyone at 5× or more.'),
+    'sleep_hours': ('Weekday sleep (hours)', 1, 'Bell-shaped around 7–8 hours, with a few very short and very long sleepers.'),
+    'bmi': ('BMI (kg/m²)', 2, 'Peaks at 25–30, with a long right tail of high values.'),
+    'sitting_minutes': ('Sitting (minutes a day)', 60, 'Spikes at round hours: people answer in whole hours.'),
+}
+
+
 def explore():
     st.header('Exploring the data first')
     left, right = st.columns([2.2, 1])
-    col = left.selectbox('Histogram of', NUMERIC + ['phq9_score'], index=5)
-    fig = px.histogram(df, x=col, nbins=28, color_discrete_sequence=[BLUE])
-    fig.add_vline(df[col].median(), line_color='orange', annotation_text='median')
-    if col == 'phq9_score':
-        fig.add_vrect(x0=10, x1=27, fillcolor='red', opacity=0.08, line_width=0,
-                      annotation_text=f'depressed zone: {overall:.1f}%', annotation_position='top left')
+    col = left.selectbox('Histogram of', list(HIST), format_func=lambda c: HIST[c][0])
+    label, width, reading = HIST[col]
+    values = df[col].dropna()
+    # bins start on a multiple of the width, so bars line up with whole scores, ages and hours
+    lo = np.floor(values.min() / width) * width
+    starts = np.floor((values - lo) / width) * width + lo
+    counts = starts.value_counts().sort_index()
+    discrete = col == 'phq9_score'                      # one bar per whole score, centred on it
+    xs = counts.index if discrete else counts.index + width / 2
+    colours = [ORANGE if discrete and s >= 10 else NAVY for s in counts.index]
+    fig = go.Figure(go.Bar(x=xs, y=counts.values, width=width * 0.92, marker_color=colours, showlegend=False,
+                           hovertemplate=f'{label}: %{{x}}<br>adults: %{{y:,}}<extra></extra>'))
+    top = counts.max()
+    # mean and median, labelled at different heights so they never overlap
+    for value, name, dash, y in [(values.median(), 'median', 'solid', 1.0), (values.mean(), 'mean', 'dot', 0.9)]:
+        fig.add_vline(value, line_color=GREY if name == 'mean' else '#E8A33D', line_dash=dash, line_width=2)
+        fig.add_annotation(x=value, y=y, yref='paper', text=f'{name} {value:.1f}', showarrow=False,
+                           xanchor='left', xshift=4, font=dict(size=12, color='#5A6578'))
+
+    def callout(value, text, ax, ay=-30):
+        # point at the bar that holds this value (its bin start, then the bar centre)
+        start = np.floor((value - lo) / width) * width + lo
+        i = int(np.argmin(np.abs(np.asarray(counts.index) - start)))
+        fig.add_annotation(x=xs[i], y=counts.iloc[i], text=text, showarrow=True, arrowhead=2, arrowcolor=ORANGE,
+                           ax=ax, ay=ay, bgcolor='white', bordercolor=ORANGE, font=dict(size=12, color=NAVY))
+
+    if discrete:
+        fig.add_vrect(x0=9.5, x1=values.max() + 0.5, fillcolor=ORANGE, opacity=0.07, line_width=0)
+        fig.add_annotation(x=18, y=top * 0.45, text=f'depressed (≥ 10): {overall:.1f}% of adults', showarrow=False,
+                           font=dict(size=13, color=ORANGE))
+        callout(0, f"{(values == 0).mean() * 100:.0f}% score 0", 110, 60)
+        fig.update_xaxes(range=[-0.7, values.max() + 0.7])
+    elif col == 'age':
+        callout(80, f"{(values == 80).sum()} adults coded 80 (80 or older)", -130)
+    elif col == 'income_ratio':
+        callout(5, f"{(values == 5).sum()} adults capped at 5×", -110)
+    elif col == 'bmi':
+        fig.add_annotation(x=60, y=top * 0.25, text='long right tail', showarrow=False, font=dict(size=12, color=ORANGE))
+    fig.update_layout(xaxis_title=label, yaxis_title='adults', bargap=0, plot_bgcolor='white',
+                      yaxis=dict(gridcolor='#E3E8EF'), xaxis=dict(showgrid=False))
     with left:
-        show(fig, 430)
+        show(fig, 420)
+        st.caption(reading)
     missing = df['income_ratio'].isna().mean() * 100
     dropped = int(df.loc[df[NUMERIC + CATEGORIES].isna().any(axis=1), 'depressed'].sum())
     stat(right, f'{missing:.1f}%', 'income missing, the most of any column')
