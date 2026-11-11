@@ -1,0 +1,42 @@
+{
+ "order": [
+  "cover",
+  "problem",
+  "dataset",
+  "rqs",
+  "explore",
+  "boxplots",
+  "patterns",
+  "sleep",
+  "method",
+  "trap",
+  "models",
+  "roc",
+  "learned",
+  "clusters",
+  "groupsleep",
+  "severity",
+  "conclusion",
+  "thanks"
+ ],
+ "notes": {
+  "cover": "Hi, I’m Kushal. My project asks whether everyday information like sleep, income and lifestyle can point to who should be screened for depression.",
+  "problem": "Depression is common, but many people who have it are never identified. Screening with the PHQ-9 questionnaire only happens if someone asks. I tested whether ordinary information like sleep, income and lifestyle can point to who should be screened. About 40 seconds.",
+  "dataset": "NHANES 2017–2018 is a US government health survey, free and public. I joined 8 files on the person ID to get 5,068 adults and 15 predictors. The class, what we predict, is depressed: a PHQ-9 score of 10 or more. That is 459 adults, 9.1%. That 9.1% is the most important number in this project. It shapes everything that follows.",
+  "rqs": "Read them quickly; the results answer them. RQ1 demographics, RQ2 lifestyle, RQ3 can models predict it, RQ4 which variables matter, RQ5 do natural groups differ. Don’t explain each one. Move on. About 25 seconds.",
+  "explore": "Income is missing most often, 12.4%. I didn’t drop incomplete rows: that would throw away 128 of the 459 depressed people. I filled the gaps instead. Outliers such as a BMI of 141 or 11+ hours of sleep are real people, so I kept them. The PHQ-9 histogram: most people score 0–2; only a thin tail reaches 10.",
+  "boxplots": "Figure 2, the box plots, and Figure 5, the correlation matrix, make the same point. Income sits clearly lower for depressed adults: median 1.49 versus 2.22, and it is the strongest correlation with the PHQ-9 score at r = −0.18, which is still weak. BMI is slightly higher, 30.6 versus 28.3. Sleep has the same median, but more long sleepers among the depressed, 14% versus 8%, and its correlation is about zero because Pearson r misses the U-shape. The boxes overlap in every plot and no two features are strongly correlated, max 0.16, so the model has to combine all 15 features and modest scores are expected.",
+  "patterns": "This is the strongest visual moment. Trouble sleeping: 20.5% depressed versus 4.6%, the biggest gap. Income steps down as it rises: 14.0% below the poverty line versus 4.7% at the top. Married people are well below the line, women are higher than men, and active people are under half. Age barely matters: every age group sits on the 9.1% line.",
+  "sleep": "Sleep hours make a U-shape: about 21–23% depressed at 3–4 hours, 7–10% at 6–8 hours, and about 20% at 11–12 hours. The correlation for sleep is almost zero, −0.017, but that doesn’t mean no link. A straight line can’t fit a U. Age, on the left, stays near the 9% line.",
+  "method": "This is a binary classification task. The class is depressed: 1 if PHQ-9 is 10 or more, else 0. The classifiers are logistic regression, random forest and SVM. I split first, 80/20 stratified, so both sets keep the 9.1% rate. Filling, scaling and one-hot encoding sit inside a pipeline, so no test data leaks into training. All three use balanced class weights, so errors on depressed adults count about ten times more, instead of throwing data away by undersampling. Each model was tuned by grid search with 5-fold stratified cross-validation, scored by F1.",
+  "trap": "A model that never predicts depression is 90.7% accurate, because 91% of adults are not depressed. But it finds 0 of 92 depressed people in the test set. Accuracy is useless here. So I scored on recall, F1 and ROC-AUC, and gave the rare class more weight with class_weight balanced.",
+  "models": "The classifiers: logistic regression, random forest and SVM, from simple and explainable to flexible. 80/20 split, 5-fold cross-validation, grid search scored on F1. With balanced class weights, logistic regression finds 63 of 92 depressed adults, recall 0.685, and ROC-AUC 0.759, the best of the three. ROC-AUC 0.759 means it ranks a depressed person above a non-depressed one 76% of the time. I chose the simplest model because it did as well as the complex ones and is the easiest to explain. The cost is 234 false alarms, so it is a screening prompt, not a diagnosis. Cross-validation, Table 7: all three models were within 0.01 F1, and logistic regression’s cross-validation F1 of 0.316 is close to its test F1 of 0.324, so it is not overfitting. Slow down on this slide.",
+  "roc": "Each point on a ROC curve is one cut-off. It plots the share of depressed people caught against the share of healthy people wrongly flagged. At the usual 0.5 cut-off logistic regression finds 63 of 92 with 234 false alarms. Lowering it to 0.3 finds 82 of 92 but flags 563 people. Logistic regression’s AUC of 0.76 means it ranks a depressed person above a non-depressed one 76% of the time. All three models beat guessing, the diagonal, but only moderately.",
+  "learned": "Top factors: trouble sleeping, income, marital status, BMI, activity and age. Both methods agree. Trouble sleeping gives about 3.7 times the odds. Each standard deviation of higher income gives about 25% lower odds. These are associations, not causes: depression may cause poor sleep as much as poor sleep causes depression.",
+  "clusters": "k-means on the 5 numeric columns, without telling it who is depressed. The elbow method chose 3 groups: going from 2 to 3 still cut the within-cluster sum of squares by about 32%, but a 4th group added only about 14%. The two lower-income groups have 9.6% and 11.9% depression, the higher-income group 4.6%. The algorithm rediscovered the income pattern by itself. The picture shows the same 3 groups in 3D: three PCA axes keep 88% of the spread, and the groups are three separate clouds.",
+  "groupsleep": "k-means could only use the five numbers, so it never saw sleep trouble, the strongest factor. When we split each group by it, sleep trouble raises the depression rate in every group, about four to seven times. Higher income without sleep trouble: 1.8%, about 1 in 55. Lower income with sleep trouble: about 24%, 1 in 4. That is a 14-fold difference. Income and sleep trouble add together, which is why the supervised models, which do use sleep trouble, do better.",
+  "severity": "The box plots show the whole spread of PHQ-9 scores in each group. All three medians are low, 1 or 2, because about three quarters of adults score 0 to 4. The difference is in the upper part: the means are 2.26 for higher income, 3.52 and 3.72 for the two lower-income groups. The severity bands, from the standard PHQ-9 cut-offs, show the same thing: 84% of the higher-income group have no symptoms, against 69% of the older lower-income group, and severe cases are about six times rarer. The mild band, 5 to 9, holds 12 to 19% of each group. These people sit just under the cut-off and explain many of the model’s false alarms.",
+  "conclusion": "Use: a GP who hears about sleep problems or money stress has good reason to offer the PHQ-9. The model should prompt a conversation, not give a diagnosis. Limits: a screening score, not a diagnosis; one point in time; and sleep trouble overlaps with a PHQ-9 item. The one-liner: a simple, explainable model can find two-thirds of people at risk. For rare outcomes, recall matters more than accuracy.",
+  "thanks": "Stop here and invite questions. Likely ones: why not accuracy; why logistic regression; how leakage was avoided (split first, pipeline inside cross-validation); the sleep-trouble overlap with PHQ-9; why k = 3; why outliers were kept; why gaps were filled instead of dropping rows."
+ }
+}
